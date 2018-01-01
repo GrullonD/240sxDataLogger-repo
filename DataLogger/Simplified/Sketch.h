@@ -36,7 +36,7 @@
 ************************************/
 // Serial Definitions
 #define DEBUG			Serial
-#define SDCARD			Serial
+#define SDCARD			Serial1
 #define GPS_PORT        Serial2
 #define NISSAN_PORT     Serial3
 
@@ -57,6 +57,7 @@ void loop(void );
 void initializeSensors();
 void initializeGPS();
 void initializeNissanConsult();
+void initializeOpenLog();
 
 // Get data
 void getHeadingDirection(sensors_event_t magnetometer, sensors_vec_t orientations);
@@ -65,11 +66,14 @@ void getGPSData();
 void getNissanData();
 
 // Peripherals
-void printToSDCard();
-boolean checkSensors();
+void printToSDCard(void);
+void gotoCommandMode(void);
+void createFile(char *);
+boolean checkSensors(void);
 void initializeECU(Consult Class);
-void checkGPSReady();
+void checkGPSReady(void);
 void sendGPSCommand(uint8_t* Command, uint8_t sizeOfArray);
-void displayInfo();
+void displayInfo(void);
+void resetOpenLog(void);
 
 #endif /* SKETCH_H_ */

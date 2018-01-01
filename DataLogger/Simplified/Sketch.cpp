@@ -53,6 +53,9 @@ int Tachometer = 0;
 int ThrottlePosition = 0;
 int BrakePosition = 0;
 
+// OpenLog
+int resetOpenLog_p = 4;
+
 /************************************
 *			The Brain				*
 ************************************/
@@ -63,12 +66,14 @@ void setup(void)
 	DEBUG.begin(NEW_BAUDRATE);
 
 	// Initialize systems
-	initializeSensors();		// Initialize Accel, Gyr, and Mag
-	initializeGPS();			// Initialize GPS and wait till reads location
-	initializeNissanConsult();	// Initialize Nissan Consult
+	initializeSensors();
+	initializeGPS();
+	initializeNissanConsult();
+	initializeOpenLog();
 	
 	// Print CSV file heading
 	SDCARD.println(CSVHEADING);
+	DEBUG.println("CSV heading printed");
 	return;
 }
 
@@ -95,7 +100,8 @@ void initializeSensors()
 {
 	gyro.enableAutoRange(true);	// Enable Auto-Ranging with Gyroscope
 	while(!checkSensors()) {}	//Initialize the Sensors
-		
+	DEBUG.println("Sensors initialized");
+	
 	previousTime = millis();	// For Gyroscope Reading
 	
 	return;
@@ -107,16 +113,20 @@ void initializeGPS()
 {
 	// Start GPS Serial Port
 	GPS_PORT.begin(GPS_STARTBAUDRATE);
+	DEBUG.println("GPS serial port begun");
 	
 	// Update Venus838FLPx baud rate to 115200
 	sendGPSCommand(baudRateCmd, sizeof(baudRateCmd));
 	GPS_PORT.begin(NEW_BAUDRATE);
+	DEBUG.println("GPS hardware and serial updated to 115200 baud");
 	
 	// Send Update Refresh Rate Command
 	sendGPSCommand(refreshRateCmd, sizeof(refreshRateCmd));
+	DEBUG.println("GPS refresh rate updated to 20 Hz");
 
 	// Wait till navigation reads location
-	checkGPSReady();	
+	checkGPSReady();
+	DEBUG.println("GPS Location found");
 	
 	return;
 }
@@ -128,11 +138,113 @@ void initializeNissanConsult()
 	myConsult.setSerial(&NISSAN_PORT);  // Set Consult to serial 3
 	myConsult.setMetric(false);			// Set Consult to MPH and Fahrenheit
 	NISSAN_PORT.flush();
+	DEBUG.println("Nissan Consult serial port begun");
 	
 	// Initialize Consult
 	initializeECU(myConsult);
+	DEBUG.println("Nissan Consult initalization command sent and received");
 		
 	return;
+}
+
+// Start OpenLog, create filename and ready it for storing data
+void initializeOpenLog()
+{
+	// Start and Reset OpenLog
+	SDCARD.begin(NEW_BAUDRATE);
+	DEBUG.println("OpenLog serial port begun");
+	resetOpenLog();
+	DEBUG.println("Reset openLog");
+
+	// Create name for file to be created
+	char fileName[12]; //Max file name length is "12345678.123"
+	sprintf(fileName, "%02u%01u-%02u%02u.csv", Month,Day,Hour,Minute);
+	DEBUG.print("File name transfered to char fileName: ");
+	DEBUG.println(fileName);
+	
+	// Create file
+	gotoCommandMode();	//Puts OpenLog in command mode
+	DEBUG.print("Command mode entered ");
+	createFile(fileName); // Creates a new file with file name
+	DEBUG.println("- file successfully created");
+	  
+	return;
+}
+
+//Setups up the software serial, resets OpenLog so we know what state it's in, and waits
+//for OpenLog to come online and report '<' that it is ready to receive characters to record
+void resetOpenLog(void) 
+{
+	pinMode(resetOpenLog_p, OUTPUT);
+	SDCARD.begin(9600);
+
+	//Reset OpenLog
+	digitalWrite(resetOpenLog_p, LOW);
+	delay(100);
+	digitalWrite(resetOpenLog_p, HIGH);
+
+	// Wait for OpenLog to respond with '<' to indicate it is alive and recording to a file
+	while(1) 
+	{
+		if(SDCARD.available())
+		{
+			if(SDCARD.read() == '<') break;			
+		}
+	}
+}
+
+// Creates a given file and then opens it in append mode (ready to record characters to the file)
+//Then returns to listening mode
+void createFile(char *fileName) 
+{
+	// Create file
+	SDCARD.print("new ");
+	SDCARD.print(fileName);
+	SDCARD.write(13); //This is \r
+
+	// Wait for OpenLog to return to waiting for a command
+	while(1) 
+	{
+		if(SDCARD.available())
+		{	
+			if(SDCARD.read() == '>') break;
+		}
+	}
+
+	SDCARD.print("append ");
+	SDCARD.print(fileName);
+	SDCARD.write(13); //This is \r
+
+	//Wait for OpenLog to indicate file is open and ready for writing
+	while(1) 
+	{
+		if(SDCARD.available())
+		{
+			if(SDCARD.read() == '<') break;
+		}	
+	}
+	//OpenLog is now waiting for characters and will record them to the new file
+	
+	return;
+}
+
+// Pushes OpenLog into command mode
+void gotoCommandMode(void) 
+{
+	// Send three control z to enter OpenLog command mode
+	// Works with Arduino v1.0
+	SDCARD.write(26);
+	SDCARD.write(26);
+	SDCARD.write(26);
+
+	//Wait for OpenLog to respond with '>' to indicate we are in command mode
+	while(1) 
+	{
+		if(SDCARD.available())
+		{
+			if(SDCARD.read() == '>') break;
+		}
+	}
 }
 
 // Initialize Sensors
@@ -158,10 +270,9 @@ boolean checkSensors()
 
 // Send initialization command to Nissan ECU
 void initializeECU(Consult Class)
-                             {
+{
 	while(initialized == false)
 	{
-		DEBUG.println("Trying to initialize Nissan Consult");
 		if( Class.initEcu() ) initialized = true;
 	}
 }
