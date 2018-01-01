@@ -63,7 +63,7 @@ int resetOpenLog_p = 4;
 void setup(void)
 {
 	// Begin serial port
-	DEBUG.begin(NEW_BAUDRATE);
+	DEBUG.begin(FASTBAUDRATE);
 
 	// Initialize systems
 	initializeSensors();
@@ -112,12 +112,12 @@ void initializeSensors()
 void initializeGPS()
 {
 	// Start GPS Serial Port
-	GPS_PORT.begin(GPS_STARTBAUDRATE);
+	GPS_PORT.begin(SLOWBAUDRATE);
 	DEBUG.println("GPS serial port begun");
 	
 	// Update Venus838FLPx baud rate to 115200
 	sendGPSCommand(baudRateCmd, sizeof(baudRateCmd));
-	GPS_PORT.begin(NEW_BAUDRATE);
+	GPS_PORT.begin(FASTBAUDRATE);
 	DEBUG.println("GPS hardware and serial updated to 115200 baud");
 	
 	// Send Update Refresh Rate Command
@@ -151,10 +151,13 @@ void initializeNissanConsult()
 void initializeOpenLog()
 {
 	// Start and Reset OpenLog
-	SDCARD.begin(NEW_BAUDRATE);
+	SDCARD.begin(FASTBAUDRATE);
 	DEBUG.println("OpenLog serial port begun");
 	resetOpenLog();
 	DEBUG.println("Reset openLog");
+
+	// TODO:	Manually change baud rate to 115200 so you don't have
+	//			to rely on remembering to change config.txt file.
 
 	// Create name for file to be created
 	char fileName[12]; //Max file name length is "12345678.123"
@@ -176,7 +179,7 @@ void initializeOpenLog()
 void resetOpenLog(void) 
 {
 	pinMode(resetOpenLog_p, OUTPUT);
-	SDCARD.begin(9600);
+	SDCARD.begin(FASTBAUDRATE);
 
 	//Reset OpenLog
 	digitalWrite(resetOpenLog_p, LOW);

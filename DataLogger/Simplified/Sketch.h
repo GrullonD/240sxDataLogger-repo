@@ -41,8 +41,8 @@
 #define NISSAN_PORT     Serial3
 
 // Baud Rate Definitions
-#define GPS_STARTBAUDRATE 9600
-#define NEW_BAUDRATE    115200
+#define SLOWBAUDRATE	9600
+#define FASTBAUDRATE    115200
 
 #define CSVHEADING "\"Time (s)\",\"Latitude\",\"Longitude\",\"Altitude (m)\",\"Heading\",\"X\",\"Y\",\"Speed (MPH)\",\"Engine Speed (RPM)\",\"Accelerator Pedal\",\"Break Pedal\""
 
